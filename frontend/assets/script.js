@@ -156,6 +156,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const prevPlaylistBtnMixtape = document.getElementById('prev-playlist-btn-mixtape');
+    if (prevPlaylistBtnMixtape) {
+        prevPlaylistBtnMixtape.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Show previous playlists container in mixtape view
+            document.getElementById('mixtape-form-container').classList.add('hidden');
+            document.getElementById('previous-playlists-mixtape').classList.remove('hidden');
+            loadPreviousPlaylists('mixtape');
+        });
+    }
+    
+    // Add event listener for back button in previous playlists view (mixtape creation)
+    const backToMixtapeBtn = document.getElementById('back-to-mixtape-btn');
+    if (backToMixtapeBtn) {
+        backToMixtapeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Hide previous playlists and show mixtape form
+            document.getElementById('previous-playlists-mixtape').classList.add('hidden');
+            document.getElementById('mixtape-form-container').classList.remove('hidden');
+        });
+    }
+
     // Form toggling functionality - Switch to signup form
     document.getElementById('show-signup').addEventListener('click', function(e) {
         e.preventDefault();
@@ -268,8 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Add new track when add button is clicked
-    if (addTrackBtn && tracksContainer) {
+      // Add new track when add button is clicked
+      if (addTrackBtn && tracksContainer) {
         addTrackBtn.addEventListener('click', () => {
             // Check if max tracks limit is reached
             const currentTracks = tracksContainer.querySelectorAll('.track-item').length;
@@ -279,36 +301,48 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Create and append new track item
-            const trackItem = document.createElement('div');
-            trackItem.className = 'track-item';
-            trackItem.innerHTML = `
-                <div class="track-number">${currentTracks + 1}</div>
-                <div class="track-input-container">
-                    <input type="text" class="youtube-link" placeholder="Paste YouTube link here...">
-                </div>
-                <button class="remove-track" title="Remove this track">✕</button>
-            `;
+         
+const trackItem = document.createElement('div');
+trackItem.className = 'track-item';
+trackItem.innerHTML = `
+    <div class="track-number">${currentTracks + 1}</div>
+    <div class="track-input-container">
+        <input type="text" class="youtube-link" placeholder="Paste YouTube link here...">
+    </div>
+    <button class="remove-track" title="Remove this track">
+        <img src="assets/remove.png" alt="Remove" class="remove-icon">
+    </button>
+`;
             tracksContainer.appendChild(trackItem);
             updateTrackNumbers();
         });
     }
     
     // Handle track removal using event delegation
-    if (tracksContainer) {
-        tracksContainer.addEventListener('click', (e) => {
-            if (e.target.classList.contains('remove-track')) {
-                // If it's the last track, just clear the input instead of removing
-                if (tracksContainer.querySelectorAll('.track-item').length <= 1) {
-                    const input = e.target.closest('.track-item').querySelector('.youtube-link');
-                    if (input) input.value = '';
-                    return;
+       
+        if (tracksContainer) {
+            tracksContainer.addEventListener('click', (e) => {
+                // Check if the clicked element is the remove button or the image inside it
+                if (e.target.classList.contains('remove-track') || 
+                    e.target.classList.contains('remove-icon') || 
+                    e.target.parentElement.classList.contains('remove-track')) {
+                    
+                    // Get the track item element
+                    const trackItem = e.target.closest('.track-item');
+                    
+                    // If it's the last track, just clear the input instead of removing
+                    if (tracksContainer.querySelectorAll('.track-item').length <= 1) {
+                        const input = trackItem.querySelector('.youtube-link');
+                        if (input) input.value = '';
+                        return;
+                    }
+                    
+                    // Otherwise remove the track item completely
+                    trackItem.remove();
+                    updateTrackNumbers();
                 }
-                // Otherwise remove the track item completely
-                e.target.closest('.track-item').remove();
-                updateTrackNumbers();
-            }
-        });
-    }
+            });
+        }
 
     // Tab switching functionality
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -546,8 +580,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }    
     
-    // Switch to playback view
-    function switchToPlaybackView() {
+      // Switch to playback view
+      function switchToPlaybackView() {
         document.getElementById('mixtape-view').classList.add('hidden');
         document.getElementById('playback-view').classList.remove('hidden');
         
@@ -559,6 +593,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update controls
         setupPlayerControls();
         
+       
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector('.tab-btn:first-child').classList.add('active');
+        
+       
+        document.getElementById('playlist').classList.remove('hidden');
+        document.getElementById('previous-playlists').classList.add('hidden');
+        
         // Render playlist
         renderPlaylist(currentPlaylistIndex);
         
@@ -566,65 +608,79 @@ document.addEventListener('DOMContentLoaded', () => {
         updateNowPlayingDisplay();
     }
 
-    // Set up player controls
-    function setupPlayerControls() {
-        const playBtn = document.getElementById('play-btn');
-        const prevBtn = document.getElementById('prev-btn');
-        const nextBtn = document.getElementById('next-btn');
-        
-        if (playBtn) {
-            playBtn.addEventListener('click', togglePlay);
-        }
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => {
-                if (!ytPlayer) return;
-        
-                const time = ytPlayer.getCurrentTime();
-        
-                if (time > 5) {
-                    // Restart current track
-                    ytPlayer.seekTo(0);
-                    currentTime = 0;
-                    document.getElementById('song-progress').style.width = '0%';
-                    document.getElementById('current-time').textContent = '0:00';
-        
-                    if (!isPaused) {
-                        startProgress();
+        // Set up player controls
+        function setupPlayerControls() {
+            const playBtn = document.getElementById('play-btn');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const createNewBtn = document.getElementById('create-new-btn');
+            
+            // Remove existing event listeners by cloning and replacing elements
+            if (playBtn) {
+                const newPlayBtn = playBtn.cloneNode(true);
+                playBtn.parentNode.replaceChild(newPlayBtn, playBtn);
+                newPlayBtn.addEventListener('click', togglePlay);
+            }
+            
+            if (prevBtn) {
+                const newPrevBtn = prevBtn.cloneNode(true);
+                prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
+                newPrevBtn.addEventListener('click', () => {
+                    if (!ytPlayer) return;
+            
+                    const time = ytPlayer.getCurrentTime();
+            
+                    if (time > 5) {
+                        // Restart current track
+                        ytPlayer.seekTo(0);
+                        currentTime = 0;
+                        document.getElementById('song-progress').style.width = '0%';
+                        document.getElementById('current-time').textContent = '0:00';
+            
+                        if (!isPaused) {
+                            startProgress();
+                        }
+                    } else {
+                        // Skip to previous track
+                        prevTrack();
                     }
-                } else {
-                    // Skip to previous track
-                    prevTrack();
-                }
-            });
-        }
-        if (nextBtn) {
-            nextBtn.addEventListener('click', nextTrack);
-        }
-        
-        // Setup create new button
-        const createNewBtn = document.getElementById('create-new-btn');
-        if (createNewBtn) {
-            createNewBtn.addEventListener('click', () => {
-                document.getElementById('playback-view').classList.add('hidden');
-                document.getElementById('mixtape-view').classList.remove('hidden');
-                
-                // Reset form
-                document.getElementById('mixtape-title').value = '';
-                const tracksContainer = document.getElementById('tracks-container');
-                tracksContainer.innerHTML = `
-                    <div class="track-item">
-                        <div class="track-number">1</div>
-                        <div class="track-input-container">
-                            <input type="text" class="youtube-link" placeholder="Paste YouTube link here...">
-                        </div>
-                        <button class="remove-track" title="Remove this track">✕</button>
+                });
+            }
+            
+            if (nextBtn) {
+                const newNextBtn = nextBtn.cloneNode(true);
+                nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
+                newNextBtn.addEventListener('click', nextTrack);
+            }
+            
+                // Setup create new button
+    if (createNewBtn) {
+        const newCreateBtn = createNewBtn.cloneNode(true);
+        createNewBtn.parentNode.replaceChild(newCreateBtn, createNewBtn);
+        newCreateBtn.addEventListener('click', () => {
+            document.getElementById('playback-view').classList.add('hidden');
+            document.getElementById('mixtape-view').classList.remove('hidden');
+            
+            
+            document.getElementById('mixtape-form-container').classList.remove('hidden');
+            document.getElementById('previous-playlists-mixtape').classList.add('hidden');
+            
+            // Reset form
+            document.getElementById('mixtape-title').value = '';
+            const tracksContainer = document.getElementById('tracks-container');
+            tracksContainer.innerHTML = `
+                <div class="track-item">
+                    <div class="track-number">1</div>
+                    <div class="track-input-container">
+                        <input type="text" class="youtube-link" placeholder="Paste YouTube link here...">
                     </div>
-                `;
-                document.getElementById('tape-title').textContent = "Your Mixtape Title";
-            });
-        }
+                    <button class="remove-track" title="Remove this track" style="visibility: hidden;">✕</button>
+                </div>
+            `;
+            document.getElementById('tape-title').textContent = "Your Mixtape Title";
+        });
     }
-
+        }
     // Toggle play/pause
     function togglePlay() {
         if (!ytPlayer) return;
@@ -697,47 +753,53 @@ document.addEventListener('DOMContentLoaded', () => {
         updateNowPlayingDisplay();
     }
 
-    // Render playlist
-    function renderPlaylist(index) {
-        const playlist = playlists[index];
-        if (!playlist) return;
+
+       // Render playlist
+// Render playlist
+function renderPlaylist(index) {
+    const playlist = playlists[index];
+    if (!playlist) return;
+
+    document.getElementById('now-playing-title').textContent = playlist.title;
+
+    const dateToShow = playlist.created_at ? formatDate(playlist.created_at) : playlist.date;
+        document.getElementById('creation-date').textContent = `Created on ${dateToShow}`;
     
-        document.getElementById('now-playing-title').textContent = playlist.title;
-        document.getElementById('creation-date').textContent = `Created on ${playlist.date}`;
+    // Generate and display description instead of date
+    const descElement = document.querySelector('.mixtape-description p');
+    if (descElement) {
+        // Use existing description if available, otherwise generate a new one
+        descElement.textContent = playlist.description || generateDescription(playlist.title);
+    }
+
+    const playlistElement = document.getElementById('playlist');
+    playlistElement.innerHTML = '';
+
+    playlist.tracks.forEach((track, i) => {
+        const trackItem = document.createElement('div');
+        trackItem.className = 'track-item';
+        trackItem.innerHTML = `
+            <div class="track-number">${i + 1}</div>
+            <div class="track-info">
+                <div class="track-title">${track.title}</div>
+                <div class="track-artist">${track.artist}</div>
+            </div>
+            <div class="track-duration">${track.duration || '0:00'}</div>
+        `;
         
-        const descElement = document.querySelector('.mixtape-description p');
-        if (descElement) {
-            descElement.textContent = playlist.description;
-        }
-    
-        const playlistElement = document.getElementById('playlist');
-        playlistElement.innerHTML = '';
-    
-        playlist.tracks.forEach((track, i) => {
-            const trackItem = document.createElement('div');
-            trackItem.className = 'track-item';
-            trackItem.innerHTML = `
-                <div class="track-number">${i + 1}</div>
-                <div class="track-info">
-                    <div class="track-title">${track.title}</div>
-                    <div class="track-artist">${track.artist}</div>
-                </div>
-                <div class="track-duration">${track.duration || '0:00'}</div>
-            `;
-            
-            // Play track when clicked
-            trackItem.addEventListener('click', () => {
-                currentTrack = i;
-                currentTime = 0;
-                playTrack(track.videoId);
-                updateNowPlayingDisplay();
-            });
-            
-            playlistElement.appendChild(trackItem);
+        // Play track when clicked
+        trackItem.addEventListener('click', () => {
+            currentTrack = i;
+            currentTime = 0;
+            playTrack(track.videoId);
+            updateNowPlayingDisplay();
         });
         
-        updateNowPlayingDisplay();
-    }
+        playlistElement.appendChild(trackItem);
+    });
+    
+    updateNowPlayingDisplay();
+}
 
     // Update now playing display
     function updateNowPlayingDisplay() {
@@ -758,32 +820,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Load previous playlists for the current user
-    async function loadPreviousPlaylists() {
+       // Load previous playlists for the current user
+       async function loadPreviousPlaylists(view = 'playback') {
         try {
-            document.getElementById('previous-playlists-list').innerHTML = 
-                '<div class="loading-message">Loading your playlists...</div>';
+            const container = view === 'mixtape' ? 
+                document.getElementById('previous-playlists-list-mixtape') : 
+                document.getElementById('previous-playlists-list');
+                
+            if (!container) return;
+            
+            container.innerHTML = '<div class="loading-message">Loading your playlists...</div>';
             
             const response = await fetch('../backend/mixtape/get_playlists.php');
             const data = await response.json();
             
             if (data.success && data.playlists && data.playlists.length > 0) {
                 previousPlaylists = data.playlists;
-                renderPreviousPlaylists();
+                renderPreviousPlaylists(view);
             } else {
-                document.getElementById('previous-playlists-list').innerHTML = 
-                    '<div class="empty-message">You haven\'t created any playlists yet</div>';
+                container.innerHTML = '<div class="empty-message">You haven\'t created any playlists yet</div>';
             }
         } catch (error) {
             console.error('Error loading playlists:', error);
-            document.getElementById('previous-playlists-list').innerHTML = 
-                '<div class="error-message">Failed to load your playlists</div>';
+            const container = view === 'mixtape' ? 
+                document.getElementById('previous-playlists-list-mixtape') : 
+                document.getElementById('previous-playlists-list');
+                
+            if (container) {
+                container.innerHTML = '<div class="error-message">Failed to load your playlists</div>';
+            }
         }
     }
 
     // Render previous playlists list
-    function renderPreviousPlaylists() {
-        const container = document.getElementById('previous-playlists-list');
+    function renderPreviousPlaylists(view = 'playback') {
+        const container = view === 'mixtape' ? 
+            document.getElementById('previous-playlists-list-mixtape') : 
+            document.getElementById('previous-playlists-list');
+            
+        if (!container) return;
+        
         container.innerHTML = '';
         
         if (previousPlaylists.length === 0) {
@@ -799,16 +875,79 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="playlist-title">${playlist.title}</div>
                     <div class="playlist-date">${formatDate(playlist.created_at)}</div>
                 </div>
-                <button class="btn-small load-playlist" data-id="${playlist.playlist_id}">Load</button>
+               <button class="btn-small load-playlist" 
+            data-id="${playlist.playlist_id}"
+            style="width: 50%; height: 30px; padding: 0px 10px ; box-sizing: border-box;">
+        Load
+    </button>
             `;
             
             playlistElement.querySelector('.load-playlist').addEventListener('click', () => {
-                loadPlaylist(playlist.playlist_id);
+                if (view === 'mixtape') {
+                    // For mixtape view, load the playlist into the form
+                    loadPlaylistIntoForm(playlist.playlist_id);
+                } else {
+                    // For playback view, load the playlist for playback
+                    loadPlaylist(playlist.playlist_id);
+                }
             });
             
             container.appendChild(playlistElement);
         });
     }
+
+                // Load a playlist into the mixtape creation form
+    async function loadPlaylistIntoForm(playlistId) {
+        try {
+            // Show loading in the playback view 
+            document.getElementById('mixtape-view').classList.add('hidden');
+            document.getElementById('playback-view').classList.remove('hidden');
+            document.getElementById('playlist').innerHTML = '<div class="loading-message">Loading your playlist...</div>';
+            
+            const response = await fetch(`../backend/mixtape/get_playlist.php?id=${playlistId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                // Add or update the playlist in our local array
+                const existingIndex = playlists.findIndex(p => p.playlist_id === data.playlist.playlist_id);
+                if (existingIndex >= 0) {
+                    playlists[existingIndex] = data.playlist;
+                    currentPlaylistIndex = existingIndex;
+                } else {
+                    playlists.unshift(data.playlist);
+                    currentPlaylistIndex = 0;
+                }
+                
+                
+                document.getElementById('playlist').classList.remove('hidden');
+                document.getElementById('previous-playlists').classList.add('hidden');
+                
+               
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector('.tab-btn:first-child').classList.add('active');
+                
+                // Render the playlist
+                renderPlaylist(currentPlaylistIndex);
+                
+                
+                setupPlayerControls();
+                
+                // Play first track if available
+                if (data.playlist.tracks && data.playlist.tracks.length > 0) {
+                    currentTrack = 0; // Ensure the first track is selected
+                    playTrack(data.playlist.tracks[0].videoId);
+                    updateNowPlayingDisplay();
+                }
+            } else {
+                throw new Error(data.error || 'Failed to load playlist');
+            }
+        } catch (error) {
+            console.error('Error loading playlist into form:', error);
+            document.getElementById('playlist').innerHTML = 
+                `<div class="error-message">Error loading playlist: ${error.message}</div>`;
+        }
+    }
+    
 
     // Format date for display
     function formatDate(dateString) {
