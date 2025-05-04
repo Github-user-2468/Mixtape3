@@ -178,7 +178,7 @@ body.dark-mode {
 /* Text display on mixtape cassette */
 .radio2-display {
     position: absolute;
-    top: 70%;
+    top: 69%;
     left: 50%;
     transform: translate(-50%, -50%);
     width: 90%;
@@ -194,8 +194,8 @@ body.dark-mode {
 /* Text display on login radio */
 .radio-display {
     position: absolute;
-    top: 60%;
-    left: 46%;
+    top: 59%;
+    left: 48%;
     transform: translate(-50%, -10%);
     width: 90%;
     text-align: center;
@@ -228,6 +228,7 @@ body.dark-mode {
     font-family: 'Special Elite', cursive;
     margin-bottom: 20px;
     margin-top: 30px;
+    padding-right: 40px;
 }
 
 /* Form header title */
@@ -509,6 +510,7 @@ button:hover {
     justify-content: center;
     align-items: center;
     font-family: 'Playfair Display', cursive;
+    font-weight: bold;
     font-size: 0.9rem;
     flex-shrink: 0;
 }
@@ -545,12 +547,14 @@ button:hover {
     align-items: center;
     justify-content: center;
 }
+
 .remove-icon {
     width: 100%;
     height: 100%;
     object-fit: contain;
     transition: filter 0.2s ease;
 }
+
 .dark-mode .remove-track {
     color: #e0e0e0;
 }
@@ -748,12 +752,6 @@ button:hover {
     border-left: 3px solid #704214;
 }
 
-.track-number {
-    width: 25px;
-    color: #704214;
-    font-weight: bold;
-}
-
 .track-info {
     flex-grow: 1;
 }
@@ -844,4 +842,56 @@ button:hover {
 
 #play-pause-icon:not(.playing) {
     content: url('assets/play.png');
+}
+
+/* Previous Playlists Styles */
+#previous-playlists {
+    margin-top: 20px;
+}
+
+.playlist-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.playlist-item:hover {
+    background-color: #f5f5f5;
+}
+
+.playlist-info {
+    flex-grow: 1;
+}
+
+.playlist-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.playlist-date {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.load-playlist {
+    padding: 5px 10px;
+    font-size: 0.9em;
+}
+
+.empty-message, .error-message {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+}
+
+.error-message {
+    color: #d32f2f;
+}
+
+.hidden {
+    display: none;
 }

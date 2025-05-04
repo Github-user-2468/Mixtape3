@@ -16,8 +16,9 @@ let isProcessing = false;
 let originalMessage = "";
 let messageInterval;
 
-//playback variables 
+// Playback variables 
 let playlists = [];
+let previousPlaylists = [];
 let currentPlaylistIndex = 0;
 let currentTrack = 0;
 let isPlaying = false;
@@ -26,7 +27,7 @@ let currentTime = 0;
 let currentDuration = 0;
 let isPaused = true;
 let pauseTimeout = null;
-//variable for yt api
+// Variable for YT API
 let ytPlayer;
 
 // Initialize theme from localStorage or default to light
@@ -79,7 +80,6 @@ function switchToMixtapeView() {
     clearInterval(messageInterval);
 }
 
-
 // Switch back to login view
 function switchToLoginView() {
     document.getElementById('mixtape-view').classList.add('hidden');
@@ -123,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startMessageCycle();
     
     initYouTubePlayer();
+    
     // Set up logout button functionality
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
@@ -131,11 +132,12 @@ document.addEventListener('DOMContentLoaded', () => {
             fetch('../backend/auth/logout.php')
                 .then(res => res.json())
                 .then(data => {
-                    console.log(data.message); // Debug
-                    switchToLoginView(); // Go back to login screen
+                    console.log(data.message);
+                    switchToLoginView();
                 });
         });        
     }
+    
     // Logout button for playback view
     const logoutBtnPlayback = document.getElementById('logout-btn-playback');
     if (logoutBtnPlayback) {
@@ -226,9 +228,9 @@ document.addEventListener('DOMContentLoaded', () => {
             method: 'POST',
             body: formData
         })
-        .then(response => response.text()) // use .text() to debug first
+        .then(response => response.text())
         .then(text => {
-            console.log('Raw response:', text); // Log raw response for debugging
+            console.log('Raw response:', text);
             try {
                 const data = JSON.parse(text);
                 if (data.status === 'success') {
@@ -307,7 +309,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    // Initializing youtube player
+
+    // Tab switching functionality
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Toggle active class
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            if (this.textContent === 'Previous Playlists') {
+                document.getElementById('playlist').classList.add('hidden');
+                document.getElementById('previous-playlists').classList.remove('hidden');
+                loadPreviousPlaylists();
+            } else {
+                document.getElementById('playlist').classList.remove('hidden');
+                document.getElementById('previous-playlists').classList.add('hidden');
+            }
+        });
+    });
+
+    // Initialize YouTube player
     function initYouTubePlayer() {
         ytPlayer = new YT.Player('yt-player', {
             height: '0',
@@ -319,12 +340,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Callback
+    // YouTube player ready callback
     function onPlayerReady(event) {
         console.log("YouTube player ready");
     }
 
-    // State Change
+    // YouTube player state change callback
     function onPlayerStateChange(event) {
         if (event.data === YT.PlayerState.ENDED) {
             nextTrack();
@@ -340,13 +361,13 @@ document.addEventListener('DOMContentLoaded', () => {
         isPaused = false;
         document.getElementById('play-pause-icon').src = 'assets/pause.png';
         
-        //Update duration from api
+        // Update duration from API
         updateTrackDuration();
         
         startProgress();
     }
     
-    // Function to handle track duration
+    // Update track duration display
     function updateTrackDuration() {
         if (!ytPlayer) return;
         
@@ -362,10 +383,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     }
     
-    // Get different types of youtube urls
+    // Extract YouTube ID from various URL formats
     function extractYouTubeId(url) {
-        
-         // Standard url
+        // Standard URL
         let match = url.match(/(?:\?|\&)v=([^&#\s]{11})/);
         if (match && match[1]) return match[1];
 
@@ -388,7 +408,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // No match found
         return null;
     }
-    // Async function for fetching data
+
+    // Fetch video data from YouTube API
     async function fetchVideoData(url) {
         const videoId = extractYouTubeId(url);
         if (!videoId) {
@@ -430,8 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-
-    // Convert seconds to minutes and seconds format
+    // Convert seconds to minutes:seconds format
     function formatDuration(seconds) {
         const secs = Number(seconds) || 0;
         const mins = Math.floor(secs / 60);
@@ -439,55 +459,47 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${mins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
     }
     
-    // Handle mixtape creation when button is clicked
+    // Handle mixtape creation
     if (createMixtapeBtn && tracksContainer) {
         createMixtapeBtn.addEventListener('click', async () => {
-            // Validate title
             const title = mixtapeTitle.value.trim();
             if (!title) {
                 alert("Please provide a title for your mixtape!");
                 return;
             }
-            
-            // Collect and validate tracks
+    
             const trackInputs = tracksContainer.querySelectorAll('.youtube-link');
             const tracks = [];
-            
+    
             trackInputs.forEach(input => {
                 const value = input.value.trim();
                 if (value) tracks.push(value);
             });
-            
-            // Ensure at least one track is added
+    
             if (tracks.length === 0) {
                 alert("Please add at least one track to your mixtape!");
                 return;
             }
-            
-            // Show creating...
+    
             isProcessing = true;
             document.getElementById('tape-title').textContent = "CREATING...";
-            
+    
             try {
-                // Create playlist object
                 const newPlaylist = {
                     title: title,
-                    date: new Date().toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
-                    }),
+                    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     tracks: [],
                     description: generateDescription(title)
                 };
-                
-                for (let i = 0; i < trackInputs.length; i++) {
-                    const input = trackInputs[i];
-                    const url = input.value.trim();
+    
+                const songIds = [];
+    
+                for (let i = 0; i < tracks.length; i++) {
+                    const url = tracks[i];
                     const videoId = extractYouTubeId(url);
                     if (videoId) {
                         const data = await fetchVideoData(url);
-                
+    
                         newPlaylist.tracks.push({
                             id: videoId,
                             title: data.title || `Track ${i + 1}`,
@@ -496,17 +508,35 @@ document.addEventListener('DOMContentLoaded', () => {
                             durationSeconds: data.durationSeconds,
                             videoId: videoId
                         });
+    
+                        songIds.push(videoId);
                     }
                 }
     
-                // Add to playlists and switch view
+                // Send to server for saving
+                const response = await fetch('../backend/mixtape/create_mixtape.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        title: title,
+                        songs: JSON.stringify(songIds)
+                    })
+                });
+    
+                const result = await response.json();
+                if (!result.success) {
+                    console.error('Server error saving playlist:', result.error);
+                    alert('Failed to save playlist to the database.');
+                    return;
+                }
+    
+                // Add to local playlist and switch views
                 playlists.unshift(newPlaylist);
                 currentPlaylistIndex = 0;
                 renderPlaylist(currentPlaylistIndex);
                 switchToPlaybackView();
-                const firstVideoId = playlists[0].tracks[0].videoId;
-                playTrack(firstVideoId);
-
+                playTrack(newPlaylist.tracks[0].videoId);
+    
             } catch (error) {
                 console.error('Error creating mixtape:', error);
                 alert('Error creating mixtape. Please try again.');
@@ -514,8 +544,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 isProcessing = false;
             }
         });
-    }
-    // Switch to playback screen after creating mixtape
+    }    
+    
+    // Switch to playback view
     function switchToPlaybackView() {
         document.getElementById('mixtape-view').classList.add('hidden');
         document.getElementById('playback-view').classList.remove('hidden');
@@ -535,7 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateNowPlayingDisplay();
     }
 
-    // Button handling for playback
+    // Set up player controls
     function setupPlayerControls() {
         const playBtn = document.getElementById('play-btn');
         const prevBtn = document.getElementById('prev-btn');
@@ -594,6 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Toggle play/pause
     function togglePlay() {
         if (!ytPlayer) return;
     
@@ -607,6 +639,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isPaused = !isPaused;
     }
 
+    // Start progress tracking
     function startProgress() {
         clearInterval(playerInterval);
         
@@ -619,7 +652,6 @@ document.addEventListener('DOMContentLoaded', () => {
         playerInterval = setInterval(() => {
             if (isPaused || !ytPlayer) return;
             
-            // Current time from yt player, fallback set to 3:45
             currentTime = ytPlayer.getCurrentTime() || 0;
             currentDuration = ytPlayer.getDuration() || 225;
             
@@ -635,7 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 100);
     }
 
-    // Function ot move to next track
+    // Play next track
     function nextTrack() {
         const trackItems = document.querySelectorAll('#playlist .track-item');
         if (trackItems.length === 0) return;
@@ -649,7 +681,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         updateNowPlayingDisplay();
     }
-    // Function to move to prev track
+    
+    // Play previous track
     function prevTrack() {
         const trackItems = document.querySelectorAll('#playlist .track-item');
         if (trackItems.length === 0) return;
@@ -664,6 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateNowPlayingDisplay();
     }
 
+    // Render playlist
     function renderPlaylist(index) {
         const playlist = playlists[index];
         if (!playlist) return;
@@ -691,7 +725,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="track-duration">${track.duration || '0:00'}</div>
             `;
             
-            // Play track
+            // Play track when clicked
             trackItem.addEventListener('click', () => {
                 currentTrack = i;
                 currentTime = 0;
@@ -705,6 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateNowPlayingDisplay();
     }
 
+    // Update now playing display
     function updateNowPlayingDisplay() {
         const trackItems = document.querySelectorAll('#playlist .track-item');
         
@@ -713,16 +748,119 @@ document.addEventListener('DOMContentLoaded', () => {
         if (trackItems[currentTrack]) {
             trackItems[currentTrack].classList.add('active');
             
-            // Update "now playing"
+            // Update "now playing" text
             document.querySelector('.section-header span').textContent = 
                 `Now Playing Track ${currentTrack + 1}`;
                 
-            // Update time duration display
+            // Update duration display
             const durationText = trackItems[currentTrack].querySelector('.track-duration').textContent;
             document.getElementById('duration').textContent = durationText;
         }
     }
-    // Descriptions for playback view
+
+    // Load previous playlists for the current user
+    async function loadPreviousPlaylists() {
+        try {
+            document.getElementById('previous-playlists-list').innerHTML = 
+                '<div class="loading-message">Loading your playlists...</div>';
+            
+            const response = await fetch('../backend/mixtape/get_playlists.php');
+            const data = await response.json();
+            
+            if (data.success && data.playlists && data.playlists.length > 0) {
+                previousPlaylists = data.playlists;
+                renderPreviousPlaylists();
+            } else {
+                document.getElementById('previous-playlists-list').innerHTML = 
+                    '<div class="empty-message">You haven\'t created any playlists yet</div>';
+            }
+        } catch (error) {
+            console.error('Error loading playlists:', error);
+            document.getElementById('previous-playlists-list').innerHTML = 
+                '<div class="error-message">Failed to load your playlists</div>';
+        }
+    }
+
+    // Render previous playlists list
+    function renderPreviousPlaylists() {
+        const container = document.getElementById('previous-playlists-list');
+        container.innerHTML = '';
+        
+        if (previousPlaylists.length === 0) {
+            container.innerHTML = '<div class="empty-message">No playlists found</div>';
+            return;
+        }
+        
+        previousPlaylists.forEach(playlist => {
+            const playlistElement = document.createElement('div');
+            playlistElement.className = 'playlist-item';
+            playlistElement.innerHTML = `
+                <div class="playlist-info">
+                    <div class="playlist-title">${playlist.title}</div>
+                    <div class="playlist-date">${formatDate(playlist.created_at)}</div>
+                </div>
+                <button class="btn-small load-playlist" data-id="${playlist.playlist_id}">Load</button>
+            `;
+            
+            playlistElement.querySelector('.load-playlist').addEventListener('click', () => {
+                loadPlaylist(playlist.playlist_id);
+            });
+            
+            container.appendChild(playlistElement);
+        });
+    }
+
+    // Format date for display
+    function formatDate(dateString) {
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return new Date(dateString).toLocaleDateString('en-US', options);
+    }
+
+    // Load a specific playlist
+    async function loadPlaylist(playlistId) {
+        try {
+            document.getElementById('previous-playlists-list').innerHTML = 
+                '<div class="loading-message">Loading playlist...</div>';
+            
+            const response = await fetch(`../backend/mixtape/get_playlist.php?id=${playlistId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                // Switch back to current playlist view
+                document.querySelector('.tab-btn.active').classList.remove('active');
+                document.querySelector('.tab-btn:first-child').classList.add('active');
+                document.getElementById('playlist').classList.remove('hidden');
+                document.getElementById('previous-playlists').classList.add('hidden');
+                
+                // Add or update the playlist in our local array
+                const existingIndex = playlists.findIndex(p => p.playlist_id === data.playlist.playlist_id);
+                if (existingIndex >= 0) {
+                    playlists[existingIndex] = data.playlist;
+                    currentPlaylistIndex = existingIndex;
+                } else {
+                    playlists.unshift(data.playlist);
+                    currentPlaylistIndex = 0;
+                }
+                
+                renderPlaylist(currentPlaylistIndex);
+                
+                // Play first track if available
+                if (data.playlist.tracks && data.playlist.tracks.length > 0) {
+                    currentTrack = 0; // Ensure the first track is selected
+                    playTrack(data.playlist.tracks[0].videoId);
+                    updateNowPlayingDisplay();
+                }
+            } else {
+                throw new Error(data.error || 'Failed to load playlist');
+            }
+        } catch (error) {
+            console.error('Error loading playlist:', error);
+            document.getElementById('previous-playlists-list').innerHTML = 
+                `<div class="error-message">Error loading playlist: ${error.message}</div>`;
+        }
+    }
+
+    // Generate mixtape description
     function generateDescription(title) {
         const descriptors = [
             "A collection of songs that capture the essence of",
@@ -745,5 +883,4 @@ document.addEventListener('DOMContentLoaded', () => {
         
         return `${randomDescriptor} ${title.toLowerCase()}, ${randomEnding}`;
     }
-    
 });
