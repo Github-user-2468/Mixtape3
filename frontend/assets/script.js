@@ -113,6 +113,35 @@ function updateTrackNumbers() {
     });
 }
 
+// YouTube player ready callback
+function onPlayerReady(event) {
+    console.log("YouTube player ready");
+}
+
+// YouTube player state change callback
+function onPlayerStateChange(event) {
+    if (event.data === YT.PlayerState.ENDED) {
+        nextTrack();
+    }
+}
+
+// Initialize YouTube player
+function initYouTubePlayer() {
+    ytPlayer = new YT.Player('yt-player', {
+        height: '0',
+        width: '0',
+        events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+        }
+    });
+}
+
+// Called by YouTube API when it's ready  
+function onYouTubeIframeAPIReady() {  
+	initYouTubePlayer(); 
+}
+
 // Initialize the application when DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Set up theme
@@ -121,9 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Start radio message cycle
     startMessageCycle();
-    
-    initYouTubePlayer();
-    
+        
     // Set up logout button functionality
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
@@ -361,30 +388,6 @@ trackItem.innerHTML = `
             }
         });
     });
-
-    // Initialize YouTube player
-    function initYouTubePlayer() {
-        ytPlayer = new YT.Player('yt-player', {
-            height: '0',
-            width: '0',
-            events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange
-            }
-        });
-    }
-
-    // YouTube player ready callback
-    function onPlayerReady(event) {
-        console.log("YouTube player ready");
-    }
-
-    // YouTube player state change callback
-    function onPlayerStateChange(event) {
-        if (event.data === YT.PlayerState.ENDED) {
-            nextTrack();
-        }
-    }
 
     // Load and play a track
     function playTrack(videoId) {
